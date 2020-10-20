@@ -259,11 +259,75 @@ import sys
 sys.path.append("/home/geoff/workspace/github_mine/pytorch_example")
 from utils import utils
 
-if __name__ == '__main__':
-    input = torch.randn(1, 3, 112, 112)
+    import collections
+    input = torch.randn(1, 1, 112, 112)
     pfld_backbone = PFLDInference(136)
+    model_state_dict = torch.load("../pretrained_models/0_1_best.pth.tar",map_location=torch.device('cpu'))
+    pfld_backbone.load_state_dict(model_state_dict["plfd_backbone"])
+    
+    new_pfld_backbone = pfld_no_bn.PFLDInference(136)
     # auxiliarynet = AuxiliaryNet(
     features, landmarks = pfld_backbone(input)
+    _, new_landmarks = new_pfld_backbone(input)
     # angle = auxiliarynet(features)
 #    utils.count_interence_time(pfld_backbone, input)
+#    utils.count_params(pfld_backbone, input)
+    for i, (k, v) in enumerate(new_pfld_backbone.state_dict().items()):
+        print(i, k)
+
+    pfld_backbone.eval()
+    pre_module_v = None
+    pre_module_name = None
+    new_modules = collections.OrderedDict()
+    new_modules_list = []
+    new_modules_name_list = []
+    last_module_v = None
+    last_module_name = None
+    for k, v in pfld_backbone.named_modules():
+        if isinstance(v, nn.Conv2d) or isinstance(v, nn.Linear) or isinstance(v, nn.BatchNorm2d):
+            pre_module_v = v if pre_module_v is None else pre_module_v
+            pre_module_name = k if pre_module_name is None else pre_module_name
+            if isinstance(v, nn.BatchNorm2d):
+                fusion_conv = fusion.fuse_conv_bn_eval(pre_module_v, v)
+                new_modules_list.append(fusion_conv.weight)
+                new_modules_list.append(fusion_conv.bias)
+                new_modules_name_list.append(pre_module_name+".weight")
+                new_modules_name_list.append(pre_module_name+".bias")
+            elif not isinstance(pre_module_v, nn.BatchNorm2d) and pre_module_v is not v:
+                new_modules_list.append(pre_module_v.weight)
+                new_modules_list.append(pre_module_v.bias)
+                new_modules_name_list.append(pre_module_name+".weight")
+                new_modules_name_list.append(pre_module_name+".bias")
+            last_module_v = v
+            last_module_name = k
+            pre_module_v = v
+            pre_module_name = k
+            
+    new_modules_list.append(last_module_v.weight)
+    new_modules_list.append(last_module_v.bias)
+    new_modules_name_list.append(last_module_name+".weight")
+    new_modules_name_list.append(last_module_name+".bias")
+    
+    for i, v in enumerate(new_modules_name_list):
+        print(i, v)
+    
+    print("new_pfld",new_pfld_backbone.state_dict()["fc.bias"])
+    with torch.no_grad():
+        for i, (name, param) in enumerate(new_pfld_backbone.named_parameters()):
+#            print(name)
+            if new_modules_list[i] is not None:
+                param.copy_(new_modules_list[i])
+    print("1- new_pfld",new_pfld_backbone.state_dict()["fc.bias"])
+    print("1-pfld",pfld_backbone.state_dict()["fc.bias"])
+    
+    features, landmarks = pfld_backbone(input)
+    _, new_landmarks = new_pfld_backbone(input)
+    
+    print("1-", landmarks)
+    print("2-", new_landmarks)
+    
     utils.count_params(pfld_backbone, input)
+    utils.count_params(new_pfld_backbone, input)
+#    utils.count_interence_time(pfld_backbone, input)
+#    utils.count_interence_time(new_pfld_backbone, input)
+    torch.save(new_pfld_backbone.state_dict(),"./pfld_no_bn.pth.tar")
