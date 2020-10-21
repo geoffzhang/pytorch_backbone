@@ -255,27 +255,25 @@ class AuxiliaryNet(nn.Module):
 
 
 
-import sys
-sys.path.append("/home/geoff/workspace/github_mine/pytorch_example")
-from utils import utils
-
+    import sys
+    sys.path.append("/home/geoff/workspace/github/framework/pytorch_backbone")
+    from utils import utils_base as utils
+    import pfld_no_bn
+    from utils import fusion
     import collections
-    input = torch.randn(1, 1, 112, 112)
+    input = torch.randn(1, 1, 112, 112)*0+1
+    
+    # 加载原始网络结构和模型
     pfld_backbone = PFLDInference(136)
     model_state_dict = torch.load("../pretrained_models/0_1_best.pth.tar",map_location=torch.device('cpu'))
     pfld_backbone.load_state_dict(model_state_dict["plfd_backbone"])
+    pfld_backbone.eval()   # 设置为eval模式
     
+    # 加载无bn网络结构
     new_pfld_backbone = pfld_no_bn.PFLDInference(136)
-    # auxiliarynet = AuxiliaryNet(
-    features, landmarks = pfld_backbone(input)
-    _, new_landmarks = new_pfld_backbone(input)
-    # angle = auxiliarynet(features)
-#    utils.count_interence_time(pfld_backbone, input)
-#    utils.count_params(pfld_backbone, input)
-    for i, (k, v) in enumerate(new_pfld_backbone.state_dict().items()):
-        print(i, k)
+    new_pfld_backbone.eval()  # 设置为eval模式
 
-    pfld_backbone.eval()
+    # 合并bn
     pre_module_v = None
     pre_module_name = None
     new_modules = collections.OrderedDict()
@@ -288,6 +286,7 @@ from utils import utils
             pre_module_v = v if pre_module_v is None else pre_module_v
             pre_module_name = k if pre_module_name is None else pre_module_name
             if isinstance(v, nn.BatchNorm2d):
+
                 fusion_conv = fusion.fuse_conv_bn_eval(pre_module_v, v)
                 new_modules_list.append(fusion_conv.weight)
                 new_modules_list.append(fusion_conv.bias)
@@ -298,6 +297,7 @@ from utils import utils
                 new_modules_list.append(pre_module_v.bias)
                 new_modules_name_list.append(pre_module_name+".weight")
                 new_modules_name_list.append(pre_module_name+".bias")
+                print(pre_module_name)
             last_module_v = v
             last_module_name = k
             pre_module_v = v
@@ -308,26 +308,24 @@ from utils import utils
     new_modules_name_list.append(last_module_name+".weight")
     new_modules_name_list.append(last_module_name+".bias")
     
-    for i, v in enumerate(new_modules_name_list):
-        print(i, v)
+#    for i, v in enumerate(new_modules_name_list):
+#        print(i, v)
     
-    print("new_pfld",new_pfld_backbone.state_dict()["fc.bias"])
+    # 更新无bn模型参数
     with torch.no_grad():
         for i, (name, param) in enumerate(new_pfld_backbone.named_parameters()):
-#            print(name)
-            if new_modules_list[i] is not None:
-                param.copy_(new_modules_list[i])
-    print("1- new_pfld",new_pfld_backbone.state_dict()["fc.bias"])
-    print("1-pfld",pfld_backbone.state_dict()["fc.bias"])
+            param.copy_(new_modules_list[i])
     
-    features, landmarks = pfld_backbone(input)
+    # 误差测试
+    _, landmarks = pfld_backbone(input)
     _, new_landmarks = new_pfld_backbone(input)
-    
     print("1-", landmarks)
     print("2-", new_landmarks)
+    print(torch.sum((landmarks-new_landmarks)*(landmarks-new_landmarks),axis=1))
     
-    utils.count_params(pfld_backbone, input)
-    utils.count_params(new_pfld_backbone, input)
+#    utils.count_params(pfld_backbone, input)
+#    utils.count_params(new_pfld_backbone, input)
 #    utils.count_interence_time(pfld_backbone, input)
 #    utils.count_interence_time(new_pfld_backbone, input)
-    torch.save(new_pfld_backbone.state_dict(),"./pfld_no_bn.pth.tar")
+#    torch.save(new_pfld_backbone.state_dict(),"../pretrained_models/pfld_gray_no_bn.pth.tar")
+#    torch.save(pfld_backbone.state_dict(),"../pretrained_models/pfld_gray.pth.tar")
