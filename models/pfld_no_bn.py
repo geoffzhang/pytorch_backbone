@@ -17,15 +17,15 @@ res_multiplier = 1
 
 def conv_bn(inp, oup, kernel, stride, padding=1):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, kernel, stride, padding, bias=False),
-        nn.BatchNorm2d(oup),
+        nn.Conv2d(inp, oup, kernel, stride, padding, bias=True),
+#        nn.BatchNorm2d(oup),
         nn.ReLU(inplace=True))
 
 
 def conv_1x1_bn(inp, oup):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-        nn.BatchNorm2d(oup),
+        nn.Conv2d(inp, oup, 1, 1, 0, bias=True),
+#        nn.BatchNorm2d(oup),
         nn.ReLU(inplace=True))
 
 
@@ -38,8 +38,8 @@ class InvertedResidual(nn.Module):
         self.use_res_connect = use_res_connect
 
         self.conv = nn.Sequential(
-            nn.Conv2d(inp, inp * expand_ratio, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(inp * expand_ratio),
+            nn.Conv2d(inp, inp * expand_ratio, 1, 1, 0, bias=True),
+#            nn.BatchNorm2d(inp * expand_ratio),
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 inp * expand_ratio,
@@ -48,11 +48,11 @@ class InvertedResidual(nn.Module):
                 stride,
                 1,
                 groups=inp * expand_ratio,
-                bias=False),
-            nn.BatchNorm2d(inp * expand_ratio),
+                bias=True),
+#            nn.BatchNorm2d(inp * expand_ratio),
             nn.ReLU(inplace=True),
-            nn.Conv2d(inp * expand_ratio, oup, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(oup),
+            nn.Conv2d(inp * expand_ratio, oup, 1, 1, 0, bias=True),
+#            nn.BatchNorm2d(oup),
         )
 
     def forward(self, x):
@@ -80,13 +80,13 @@ class PFLDInference(nn.Module):
         super(PFLDInference, self).__init__()
         self.display_network=1
         self.num_output_channels = num_output_channels
-        self.conv1 = nn.Conv2d(3, int(64*width_multiplier), kernel_size=3, stride=2, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(int(64*width_multiplier))
+        self.conv1 = nn.Conv2d(1, int(64*width_multiplier), kernel_size=3, stride=2, padding=1, bias=True)
+#        self.bn1 = nn.BatchNorm2d(int(64*width_multiplier))
         self.relu = nn.ReLU(inplace=True)
 
-        self.conv2 = nn.Conv2d(int(64*width_multiplier), int(64*width_multiplier), kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(int(64*width_multiplier), int(64*width_multiplier), kernel_size=3, stride=1, padding=1, bias=True)
         # self.conv2 = nn.Conv2d(int(64*width_multiplier), int(64*width_multiplier), kernel_size=3, stride=1, padding=1, groups=int(64*width_multiplier), bias=False)   # DWConv
-        self.bn2 = nn.BatchNorm2d(int(64*width_multiplier))
+#        self.bn2 = nn.BatchNorm2d(int(64*width_multiplier))
         self.relu = nn.ReLU(inplace=True)
 
         self.conv3_1 = InvertedResidual(int(64*width_multiplier), int(64*width_multiplier), 2, False, 2)
@@ -109,8 +109,8 @@ class PFLDInference(nn.Module):
 
         self.conv7 = conv_bn(int(16*width_multiplier), int(32*width_multiplier), 3, 2, 1)  # [32*width_multiplier, 7, 7]
         # self.conv8 = conv_bn(int(32*width_multiplier), int(128*width_multiplier), math.ceil(7*res_multiplier), 1, 0)  # [128*width_multiplier, 1, 1]
-        self.conv8 = nn.Conv2d(int(32*width_multiplier), int(128*width_multiplier), math.ceil(7*res_multiplier), 1, 0) 
-        self.bn8 = nn.BatchNorm2d(int(128*width_multiplier))
+        self.conv8 = nn.Conv2d(int(32*width_multiplier), int(128*width_multiplier), math.ceil(7*res_multiplier), 1, 0, bias=True) 
+#        self.bn8 = nn.BatchNorm2d(int(128*width_multiplier))
 
         self.avg_pool1 = nn.AvgPool2d(int(14*res_multiplier))
         self.avg_pool2 = nn.AvgPool2d(math.ceil(7*res_multiplier))
@@ -136,10 +136,10 @@ class PFLDInference(nn.Module):
         if self.display_network:
             print("PFLDInterence:")
             print(x.shape)
-        x = self.relu(self.bn1(self.conv1(x)))  # [64, 56, 56]
+        x = self.relu(self.conv1(x))  # [64, 56, 56]
         if self.display_network:
             print(x.shape)
-        x = self.relu(self.bn2(self.conv2(x)))  # [64, 56, 56]
+        x = self.relu(self.conv2(x))  # [64, 56, 56]
         # x = self.relu(self.conv1(x))  # [64, 56, 56]
         # x = self.relu(self.conv2(x))  # [64, 56, 56]
         if self.display_network:
@@ -255,77 +255,28 @@ class AuxiliaryNet(nn.Module):
 
 
 
-    import sys
-    sys.path.append("/home/geoff/workspace/github/framework/pytorch_backbone")
-    from utils import utils_base as utils
-    import pfld_no_bn
-    from utils import fusion
-    import collections
-    input = torch.randn(1, 1, 112, 112)*0+1
-    
-    # 加载原始网络结构和模型
+import sys
+sys.path.append("/home/geoff/workspace/github/framework/pytorch_backbone")
+from utils import utils_base as utils
+from utils import fusion
+
+if __name__ == '__main__':
+    input = torch.randn(1, 3, 112, 112)
     pfld_backbone = PFLDInference(136)
-    model_state_dict = torch.load("../pretrained_models/0_1_best.pth.tar",map_location=torch.device('cpu'))
-    pfld_backbone.load_state_dict(model_state_dict["plfd_backbone"])
-    pfld_backbone.eval()   # 设置为eval模式
-    
-    # 加载无bn网络结构
-    new_pfld_backbone = pfld_no_bn.PFLDInference(136)
-    new_pfld_backbone.eval()  # 设置为eval模式
-
-    # 合并bn
-    pre_module_v = None
-    pre_module_name = None
-    new_modules = collections.OrderedDict()
-    new_modules_list = []
-    new_modules_name_list = []
-    last_module_v = None
-    last_module_name = None
-    for k, v in pfld_backbone.named_modules():
-        if isinstance(v, nn.Conv2d) or isinstance(v, nn.Linear) or isinstance(v, nn.BatchNorm2d):
-            pre_module_v = v if pre_module_v is None else pre_module_v
-            pre_module_name = k if pre_module_name is None else pre_module_name
-            if isinstance(v, nn.BatchNorm2d):
-
-                fusion_conv = fusion.fuse_conv_bn_eval(pre_module_v, v)
-                new_modules_list.append(fusion_conv.weight)
-                new_modules_list.append(fusion_conv.bias)
-                new_modules_name_list.append(pre_module_name+".weight")
-                new_modules_name_list.append(pre_module_name+".bias")
-            elif not isinstance(pre_module_v, nn.BatchNorm2d) and pre_module_v is not v:
-                new_modules_list.append(pre_module_v.weight)
-                new_modules_list.append(pre_module_v.bias)
-                new_modules_name_list.append(pre_module_name+".weight")
-                new_modules_name_list.append(pre_module_name+".bias")
-                print(pre_module_name)
-            last_module_v = v
-            last_module_name = k
-            pre_module_v = v
-            pre_module_name = k
-            
-    new_modules_list.append(last_module_v.weight)
-    new_modules_list.append(last_module_v.bias)
-    new_modules_name_list.append(last_module_name+".weight")
-    new_modules_name_list.append(last_module_name+".bias")
-    
-#    for i, v in enumerate(new_modules_name_list):
-#        print(i, v)
-    
-    # 更新无bn模型参数
-    with torch.no_grad():
-        for i, (name, param) in enumerate(new_pfld_backbone.named_parameters()):
-            param.copy_(new_modules_list[i])
-    
-    # 误差测试
-    _, landmarks = pfld_backbone(input)
-    _, new_landmarks = new_pfld_backbone(input)
-    print("1-", landmarks)
-    print("2-", new_landmarks)
-    print(torch.sum((landmarks-new_landmarks)*(landmarks-new_landmarks),axis=1))
-    
-#    utils.count_params(pfld_backbone, input)
-#    utils.count_params(new_pfld_backbone, input)
+    # auxiliarynet = AuxiliaryNet(
+    features, landmarks = pfld_backbone(input)
+    # angle = auxiliarynet(features)
 #    utils.count_interence_time(pfld_backbone, input)
-#    utils.count_interence_time(new_pfld_backbone, input)
-#    torch.save(new_pfld_backbone.state_dict(),"../pretrained_models/pfld_gray_no_bn.pth.tar")
-#    torch.save(pfld_backbone.state_dict(),"../pretrained_models/pfld_gray.pth.tar")
+#    utils.count_params(pfld_backbone, input)
+    
+    for k, v in pfld_backbone.state_dict().items():
+        print(k)
+
+
+
+
+
+
+
+
+

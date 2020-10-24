@@ -194,6 +194,11 @@ class MobileNetV3(nn.Module):
         else:
             raise NotImplementedError
 
+        # for retinaface
+        self.stage1 = nn.Sequential(*self.feature[0:4])
+        self.stage2 = nn.Sequential(*self.feature[4:9])
+        self.stage3 = nn.Sequential(*self.feature[9:13])
+        
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
 
