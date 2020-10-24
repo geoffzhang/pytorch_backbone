@@ -4,9 +4,10 @@ from torchvision.models.utils import load_state_dict_from_url
 
 
 import sys
-sys.path.append("/home/geoff/workspace/github_mine/pytorch_example")
+sys.path.append("/home/geoff/workspace/github_mine/pytorch_backbone")
 from utils import utils
 from models.mobilenet_v3 import mobilenetv3
+from utils import merge_conv_bn
 
 import time
 
@@ -198,12 +199,12 @@ def mobilenet_v2(pretrained=False, progress=True, **kwargs):
 if __name__ == '__main__':
     input = torch.randn(1, 3, 224, 224)
     net = mobilenet_v2(width_mult = 1)
-    torch.save(net, "./pretrained_models/mobilenet_v2_0.25x.pth")
-    output = net.features(input)
+#    torch.save(net, "./pretrained_models/mobilenet_v2_0.25x.pth")
+#    output = net.features(input)
+    merge_conv_bn.merge(net)
     
     
-    
-    utils.count_params(net.features, input)
-    utils.draw_visual_net(net, input, "./visual_net/mnt", "torchviz")
+#    utils.count_params(net.features, input)
+#    utils.draw_visual_net(net, input, "./visual_net/mnt", "torchviz")
 #    utils.count_interence_time(net, input)
     
