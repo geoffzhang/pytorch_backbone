@@ -90,15 +90,15 @@ class MSCAM(nn.Module):
         self.branch1 = nn.Sequential(*branch1)
 
         branch2 = []
-        branch2.append(conv_bn(inp, oup_medium, 3, 1, 1, nn.Conv2d, nn.BatchNorm2d, nn.ReLU))
-        branch2.append(conv_bn(oup_medium, inp, 3, 1, 1, nn.Conv2d, nn.BatchNorm2d, None))
+        branch2.append(conv_1x1_bn(inp, oup_medium, nn.Conv2d, nn.BatchNorm2d, nn.ReLU))
+        branch2.append(conv_1x1_bn(oup_medium, inp, nn.Conv2d, nn.BatchNorm2d, None))
         self.branch2 = nn.Sequential(*branch2)
     
     def forward(self, x):
-        x1 = self.branch1(x)
+#        x1 = self.branch1(x)
         x2 = self.branch2(x)
 
-        x = x * torch.sigmoid(x1+x2)  # sigmoid(x1+x2)
+#        x = x * torch.sigmoid(x1+x2)  # sigmoid(x1+x2)
 
         return x
 
@@ -120,8 +120,8 @@ if __name__=="__main__":
 
     print("<<<<< enter main <<<<<")
 #    conv_bn(112,112, norm_layer=None)
-    input = torch.randn(4, 32, 224, 224)
-    input1 = torch.randn(4, 32, 224, 224)
+    input = torch.randn(1, 32, 224, 224)
+    input1 = torch.randn(1, 32, 224, 224)
 
     mscam = MSCAM(32,32,0.25)
     mscam(input)
