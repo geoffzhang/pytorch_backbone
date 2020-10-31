@@ -169,7 +169,7 @@ class GhostNet(nn.Module):
         self.cfgs = cfgs
 
         # building first layer
-        output_channel = _make_divisible(16 * width_mult, 4)
+        output_channel = _make_divisible(16 * width_mult, 8)
         layers = [nn.Sequential(
             nn.Conv2d(3, output_channel, 3, 2, 1, bias=False),
             nn.BatchNorm2d(output_channel),
@@ -180,13 +180,13 @@ class GhostNet(nn.Module):
         # building inverted residual blocks
         block = GhostBottleneck
         for k, exp_size, c, use_se, s in self.cfgs:
-            output_channel = _make_divisible(c * width_mult, 4)
-            hidden_channel = _make_divisible(exp_size * width_mult, 4)
+            output_channel = _make_divisible(c * width_mult, 8)
+            hidden_channel = _make_divisible(exp_size * width_mult, 8)
             layers.append(block(input_channel, hidden_channel, output_channel, k, s, use_se))
             input_channel = output_channel
 
         # building last several layers
-        output_channel = _make_divisible(exp_size * width_mult, 4)
+        output_channel = _make_divisible(exp_size * width_mult, 8)
         layers.append(conv_bn(input_channel, output_channel, 1, nn.Conv2d, nn.BatchNorm2d, nn.ReLU))
         layers.append(nn.AdaptiveAvgPool2d((1, 1)))
         
@@ -239,10 +239,10 @@ if __name__=='__main__':
     
     model = GhostNet(model='small', width_mult=1)
     model.eval()
-    torch.save(model.state_dict(), "ghost.pth")
+#    torch.save(model.state_dict(), "ghost.pth")
     # print(model)
     input = torch.randn(1,3,224,224)
     y = model(input)
-    # utils.count_interence_time(model, input)
+    utils.count_interence_time(model, input)
     # print(y)
 

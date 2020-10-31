@@ -244,7 +244,7 @@ if __name__ == '__main__':
     
     net = mobilenetv3(width_mult=0.25, input_size=224, mode='small')
     input = torch.randn(1, 3, 224, 224)
-    
+    net.eval()
     torch.save(net.state_dict(), "v3.pth")
     
     utils.count_interence_time(net, input)
