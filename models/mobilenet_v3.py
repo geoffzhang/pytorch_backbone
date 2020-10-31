@@ -2,10 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import sys
-sys.path.append("/home/geoff/workspace/github_mine/pytorch_example")
-from utils import utils
-
 __all__ = ['MobileNetV3', 'mobilenetv3']
 
 
@@ -195,9 +191,9 @@ class MobileNetV3(nn.Module):
             raise NotImplementedError
 
         # for retinaface
-        self.stage1 = nn.Sequential(*self.feature[0:4])
-        self.stage2 = nn.Sequential(*self.feature[4:9])
-        self.stage3 = nn.Sequential(*self.feature[9:13])
+        self.stage1 = nn.Sequential(*self.features[0:4])
+        self.stage2 = nn.Sequential(*self.features[4:9])
+        self.stage3 = nn.Sequential(*self.features[9:13])
         
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
@@ -242,19 +238,14 @@ def mobilenetv3(pretrained=False, **kwargs):
 
 
 if __name__ == '__main__':
-    net = mobilenetv3(width_mult=1, input_size=96)
-    torch.save(net, "./pretrained_models/mobilenet_v3_0.25x.pth")
-    print('Total params: %.2fM' % (sum(p.numel() for p in net.parameters())/1000000.0))
-    input_size=(1, 3, 96, 96)
-    # pip install --upgrade git+https://github.com/kuan-wang/pytorch-OpCounter.git
-#    from thop import profile
-#    flops, params = profile(net, input_size=input_size)
-    # print(flops)
-    # print(params)
-#    print('Total params: %.2fM' % (params/1000000.0))
-#    print('Total flops: %.2fM' % (flops/1000000.0))
-    x = torch.randn(input_size)
-    out = net(x)
+    import sys
+    sys.path.append("/home/geoff/workspace/github_mine/pytorch_backbone")
+    from utils import utils_base as utils
     
-#    utils.count_interence_time(net, x)
+    net = mobilenetv3(width_mult=0.25, input_size=224, mode='small')
+    input = torch.randn(1, 3, 224, 224)
+    
+    torch.save(net.state_dict(), "v3.pth")
+    
+    utils.count_interence_time(net, input)
     
