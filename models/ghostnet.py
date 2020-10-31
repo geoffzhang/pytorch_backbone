@@ -211,15 +211,12 @@ class GhostNet(nn.Module):
         self._initialize_weights()
 
     def forward(self, x):
-        # for i in range(len(self.features)):
-        #     x = self.features[i](x)
-        #     print(x.size())
-        x1 = self.stage1(x)
-        print(x1.size())
-        x1 = self.stage2(x1)
-        print(x1.size())
-        x1 = self.stage3(x1)
-        print(x1.size())
+        # x1 = self.stage1(x)
+        # print(x1.size())
+        # x1 = self.stage2(x1)
+        # print(x1.size())
+        # x1 = self.stage3(x1)
+        # print(x1.size())
 
         x = self.features(x)
         x = x.view(x.size(0), -1)
