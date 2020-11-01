@@ -201,11 +201,11 @@ class GhostNet(nn.Module):
         input_channel = output_channel
         output_channel = 1280
         self.classifier = nn.Sequential(
-            nn.Linear(input_channel, output_channel, bias=False),
-            nn.BatchNorm1d(output_channel),
-            nn.ReLU(inplace=True),
+#            nn.Linear(input_channel, output_channel, bias=False),
+#            nn.BatchNorm1d(output_channel),
+#            nn.ReLU(inplace=True),
             nn.Dropout(0.2),
-            nn.Linear(output_channel, num_classes),
+            nn.Linear(input_channel, num_classes),
         )
 
         self._initialize_weights()
@@ -219,8 +219,8 @@ class GhostNet(nn.Module):
         # print(x1.size())
 
         x = self.features(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier(x)
+#        x = x.view(x.size(0), -1)
+#        x = self.classifier(x)
         return x
 
     def _initialize_weights(self):
@@ -238,10 +238,10 @@ if __name__=='__main__':
     from utils import utils_base as utils
     
     model = GhostNet(model='small', width_mult=1)
-    model.eval()
+#    model.eval()
 #    torch.save(model.state_dict(), "ghost.pth")
     # print(model)
-    input = torch.randn(1,3,224,224)
+    input = torch.randn(1,3,640,480)
     y = model(input)
     utils.count_interence_time(model, input)
     # print(y)

@@ -102,8 +102,8 @@ class MobileBottleneck(nn.Module):
             # dw
             conv_layer(exp, exp, kernel, stride, padding, groups=exp, bias=False),
             norm_layer(exp),
-            SELayer(exp),
             nlin_layer(inplace=True),
+            SELayer(exp),
             # pw-linear
             conv_layer(exp, oup, 1, 1, 0, bias=False),
             norm_layer(oup),
@@ -208,8 +208,8 @@ class MobileNetV3(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.mean(3).mean(2)
-        x = self.classifier(x)
+#        x = x.mean(3).mean(2)
+#        x = self.classifier(x)
         return x
 
     def _initialize_weights(self):
@@ -242,9 +242,9 @@ if __name__ == '__main__':
     sys.path.append("/home/geoff/workspace/github_mine/pytorch_backbone")
     from utils import utils_base as utils
     
-    net = mobilenetv3(width_mult=0.25, input_size=224, mode='small')
-    input = torch.randn(1, 3, 224, 224)
-    net.eval()
+    net = mobilenetv3(width_mult=1, input_size=224, mode='small')
+    input = torch.randn(1, 3, 640, 480)
+#    net.eval()
     torch.save(net.state_dict(), "v3.pth")
     
     utils.count_interence_time(net, input)
